@@ -50,7 +50,8 @@ class MainFrame(wx.Frame):
             f.close()
         dlg.Destroy()
         if self.panel.IsShown():
-            self.panel.Hide()
+            self.panel.Destroy()
+            # self.Layout()
             self.Fit()
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
