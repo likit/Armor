@@ -1,6 +1,6 @@
 import os
 import wx
-import pandas
+import pandas as pd
 from components.gridtable import DataGrid, DataTable
 
 VERSION = "0.1"
@@ -17,7 +17,7 @@ class MainFrame(wx.Frame):
         menuExit = filemenu.Append(wx.ID_EXIT, "E&xit", "Terminate the program")
         menuCloseGrid = gridmenu.Append(wx.ID_CLOSE, "Close", "Close")
         menuSumGrid = gridmenu.Append(wx.ID_PREVIEW, "Summarize", "Summarize data")
-        menuHeaderGrid = gridmenu.Append(wx.ID_EDIT, "Edit headers", "Edit headers")
+        menuEditHeaderGrid = gridmenu.Append(wx.ID_EDIT, "Edit headers", "Edit headers")
 
         menuBar = wx.MenuBar()
         menuBar.Append(filemenu, "&File")
@@ -29,6 +29,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnImport, menuImport)
         self.Bind(wx.EVT_MENU, self.OnCloseGrid, menuCloseGrid)
         self.Bind(wx.EVT_MENU, self.OnSumGrid, menuSumGrid)
+        self.Bind(wx.EVT_MENU, self.OnEditHeaderGrid, menuEditHeaderGrid)
 
         self.CreateStatusBar(2)
         self.SetStatusText("Welcome to Armor!")
@@ -53,9 +54,9 @@ class MainFrame(wx.Frame):
             filename = dlg.GetFilename()
             dirname = dlg.GetDirectory()
             if filename.endswith('xlsx') or filename.endswith('xls'):
-                self.df = pandas.read_excel(os.path.join(dirname, filename))
+                self.df = pd.read_excel(os.path.join(dirname, filename))
             elif filename.endswith('csv'):
-                self.df = pandas.read_csv(os.path.join(dirname, filename))
+                self.df = pd.read_csv(os.path.join(dirname, filename))
         dlg.Destroy()
         self.SetStatusText('Data from file: {}'.format(os.path.join(dirname, filename)))
         self.SetStatusText('Total Row: {}, Column: {}'.format(len(self.df), len(self.df.columns)), 1)
@@ -87,6 +88,24 @@ class MainFrame(wx.Frame):
         childFrame = wx.Frame(self, title="Description")
         self.desgrid = DataGrid(childFrame, data=self.df.describe())
         childFrame.Show()
+
+    def OnEditHeaderGrid(self, e):
+        dlg = wx.Frame(self, title='Edit Headers')
+        hdrList = wx.ListCtrl(dlg, -1, style=wx.LC_REPORT)
+        dtypes = self.df.dtypes
+        for col, text in enumerate(['no.', 'headers', 'mappers', 'dtype', 'drug', 'show']):
+            hdrList.InsertColumn(col, text)
+
+        for idx, header in enumerate(self.df.columns):
+            index = hdrList.InsertStringItem(idx, str(idx+1))
+            hdrList.SetStringItem(index, 1, header)
+            hdrList.SetStringItem(index, 3, str(dtypes[header]))
+
+
+        # okButton = wx.Button(dlg, wx.ID_OK, "Ok", pos=(15,15))
+        # okButton.SetDefault()
+        # cancelButton = wx.Button(dlg, wx.ID_CANCEL, "Cancel", pos=(115, 15))
+        dlg.Show()
 
 
 if __name__ == '__main__':
