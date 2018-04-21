@@ -90,6 +90,10 @@ class MainFrame(wx.Frame):
         childFrame.Show()
 
     def OnEditHeaderGrid(self, e):
+
+        def OnClose(event):
+            dlg.Hide()
+
         fileMenu = wx.Menu()
         menuImport = fileMenu.Append(wx.NewId(), "&Import", "Import scheme")
         menuSave = fileMenu.Append(wx.NewId(), "&Save", "Save scheme")
@@ -97,8 +101,10 @@ class MainFrame(wx.Frame):
         menuExit = fileMenu.Append(wx.NewId(), "&Close", "Close")
         menuBar = wx.MenuBar()
         menuBar.Append(fileMenu, "&File")
+
         dlg = wx.Frame(self, title='Edit Headers')
         dlg.SetMenuBar(menuBar)
+        dlg.Bind(wx.EVT_MENU, OnClose, menuExit)
         hdrList = wx.ListCtrl(dlg, -1, style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES)
         dtypes = self.df.dtypes
         for col, text in enumerate(['no.', 'headers', 'mappers', 'dtype', 'drug', 'show']):
