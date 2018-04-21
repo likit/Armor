@@ -34,6 +34,10 @@ class MainFrame(wx.Frame):
         self.CreateStatusBar(2)
         self.SetStatusText("Welcome to Armor!")
 
+        # a schema file
+        self.schemafilename = ''
+        self.schemadirname = ''
+
         self.Show(True)
 
     def OnAbout(self, e):
@@ -48,8 +52,8 @@ class MainFrame(wx.Frame):
         dlg.Destroy()
 
     def OnImport(self, e):
-        self.dirname = ''
-        dlg = wx.FileDialog(self, 'Choose a file', self.dirname, '', '*.*', wx.FD_OPEN)
+        dlg = wx.FileDialog(self, 'Choose a file', defaultDir=os.getcwd(),
+                                defaultFile="", wildcard='*.xls;*.xlsx;*.csv', style=wx.FD_OPEN)
         if dlg.ShowModal() == wx.ID_OK:
             filename = dlg.GetFilename()
             dirname = dlg.GetDirectory()
@@ -57,6 +61,9 @@ class MainFrame(wx.Frame):
                 self.df = pd.read_excel(os.path.join(dirname, filename))
             elif filename.endswith('csv'):
                 self.df = pd.read_csv(os.path.join(dirname, filename))
+        else:
+            dirname = None
+            filename = None
         dlg.Destroy()
         self.SetStatusText('Data from file: {}'.format(os.path.join(dirname, filename)))
         self.SetStatusText('Total Row: {}, Column: {}'.format(len(self.df), len(self.df.columns)), 1)
@@ -91,19 +98,90 @@ class MainFrame(wx.Frame):
 
     def OnEditHeaderGrid(self, e):
 
-        headdf = pd.DataFrame(columns = ['no.', 'header', 'mapper', 'dtype', 'drug', 'show'])
-        headdata = []
+        columns = ['no.', 'header', 'mapper', 'dtype', 'drug', 'show']
+        headdf = pd.DataFrame(columns=columns)
+
+        def createNewHeaderSchemaList(theList, dataframe, columns):
+            headerdata = []
+            dtypes = dataframe.dtypes
+            for col, text in enumerate(columns):
+                theList.InsertColumn(col, text)
+
+            for idx, header in enumerate(dataframe.columns):
+                index = theList.InsertStringItem(idx, str(idx+1))
+                theList.SetStringItem(index, 1, header)
+                theList.SetStringItem(index, 2, header)
+                theList.SetStringItem(index, 3, str(dtypes[header]))
+                headerdata.append({
+                    'no.': str(idx+1),
+                    'header': header,
+                    'dtype': str(dtypes[header]),
+                    'mapper': header
+                })
+
+            theList.SetColumnWidth(1, wx.LIST_AUTOSIZE)
+            theList.SetColumnWidth(2, wx.LIST_AUTOSIZE)
+            theList.SetColumnWidth(3, wx.LIST_AUTOSIZE)
+            return headerdata
+
+        def createHeaderSchemaListFromFile(theList, dataframe, columns):
+            theList.ClearAll()
+            for col, text in enumerate(columns):
+                theList.InsertColumn(col, text)
+
+            for idx, row in enumerate(dataframe.iterrows()):
+                item = row[1]
+                index = theList.InsertStringItem(idx, str(idx+1))
+                for n, colname in enumerate(columns[1:]):
+                    theList.SetStringItem(index, n+1, str(item[colname]))
+
+            theList.SetColumnWidth(1, wx.LIST_AUTOSIZE)
+            theList.SetColumnWidth(2, wx.LIST_AUTOSIZE)
+            theList.SetColumnWidth(3, wx.LIST_AUTOSIZE)
+
+
+        def OnImport(event, theList, dataframe, columns):
+            openDlg = wx.FileDialog(self, 'Choose a file', self.schemadirname, '', '*.csv;', wx.FD_OPEN)
+            if openDlg.ShowModal() == wx.ID_OK:
+                self.schemafilename = openDlg.GetFilename()
+                self.schemadirname = openDlg.GetDirectory()
+                try:
+                    dataframe = pd.read_csv(
+                        os.path.join(self.schemadirname, self.schemafilename))
+                    print(dataframe.head())
+                except:
+                    alertdialog = wx.MessageDialog(self,
+                        'An error occurred. Cannot load a schema from the file.')
+                    alertdialog.ShowModal()
+                else:
+                    try:
+                        createHeaderSchemaListFromFile(theList, dataframe, columns)
+                    except Exception as e:
+                        alertdialog = wx.MessageDialog(self,
+                                           'An error occurred. Cannot display a schema.')
+                        alertdialog.ShowModal()
+                        raise e
+
+        def OnSave(event, data):
+            if not self.filename:  # the schema has never been saved before
+                OnSaveAs(event, data)
+            else:
+                try:
+                    data.to_csv(os.path.join(self.dirname, self.filename), index=False)
+                except:
+                    alertdialog = wx.MessageDialog(self, 'An error occurred. Cannot save a scheme to disk.')
 
         def OnClose(event):
             dlg.Hide()
 
         def OnSaveAs(event, data):
-            saveDlg = wx.FileDialog(self, 'Choose a file', self.dirname, '', '*.*', wx.FD_SAVE)
+            saveDlg = wx.FileDialog(self, 'Choose a file',
+                                        self.schemadirname, '', '*.csv;', wx.FD_SAVE)
             if saveDlg.ShowModal() == wx.ID_OK:
-                filename = saveDlg.GetFilename()
-                dirname = saveDlg.GetDirectory()
+                self.schemafilename = saveDlg.GetFilename()
+                self.schemadirname = saveDlg.GetDirectory()
                 try:
-                    data.to_csv(os.path.join(dirname, filename), index=False)
+                    data.to_csv(os.path.join(self.schemadirname, self.schemafilename), index=False)
                 except:
                     alertdialog = wx.MessageDialog(self, 'An error occurred. Cannot save a scheme to disk.')
                     alertdialog.ShowModal()
@@ -121,32 +199,11 @@ class MainFrame(wx.Frame):
         dlg.SetMenuBar(menuBar)
         dlg.Bind(wx.EVT_MENU, OnClose, menuExit)
         dlg.Bind(wx.EVT_MENU, lambda e: OnSaveAs(e, headdf), menuSaveAs)
-        hdrList = wx.ListCtrl(dlg, -1, style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES)
-        dtypes = self.df.dtypes
-        for col, text in enumerate(headdf.columns):
-            hdrList.InsertColumn(col, text)
 
-        for idx, header in enumerate(self.df.columns):
-            index = hdrList.InsertStringItem(idx, str(idx+1))
-            hdrList.SetStringItem(index, 1, header)
-            hdrList.SetStringItem(index, 2, header)
-            hdrList.SetStringItem(index, 3, str(dtypes[header]))
-            headdata.append({
-                'no.': str(idx+1),
-                'header': header,
-                'dtype': str(dtypes[header]),
-                'mapper': header
-            })
-
-        headdf = headdf.append(headdata)
-
-        hdrList.SetColumnWidth(1, wx.LIST_AUTOSIZE)
-        hdrList.SetColumnWidth(2, wx.LIST_AUTOSIZE)
-        hdrList.SetColumnWidth(3, wx.LIST_AUTOSIZE)
-
-        # okButton = wx.Button(dlg, wx.ID_OK, "Ok", pos=(15,15))
-        # okButton.SetDefault()
-        # cancelButton = wx.Button(dlg, wx.ID_CANCEL, "Cancel", pos=(115, 15))
+        theList = wx.ListCtrl(dlg, -1, style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES)
+        dlg.Bind(wx.EVT_MENU, lambda e: OnImport(e, theList, headdf, columns), menuImport)
+        if not self.schemafilename:  # new schema
+            headdf = headdf.append(createNewHeaderSchemaList(theList, self.df, columns))
         dlg.Show()
 
 
