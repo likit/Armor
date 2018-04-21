@@ -101,6 +101,9 @@ class MainFrame(wx.Frame):
             hdrList.SetStringItem(index, 1, header)
             hdrList.SetStringItem(index, 3, str(dtypes[header]))
 
+        hdrList.SetColumnWidth(1, wx.LIST_AUTOSIZE)
+        hdrList.SetColumnWidth(2, wx.LIST_AUTOSIZE)
+        hdrList.SetColumnWidth(3, wx.LIST_AUTOSIZE)
 
         # okButton = wx.Button(dlg, wx.ID_OK, "Ok", pos=(15,15))
         # okButton.SetDefault()
