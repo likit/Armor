@@ -12,12 +12,12 @@ class MainFrame(wx.Frame):
         helpmenu = wx.Menu()
         filemenu = wx.Menu()
         gridmenu = wx.Menu()
+        menuExit = filemenu.Append(wx.ID_EXIT, "E&xit", "Exit the program")
         menuAbout = helpmenu.Append(wx.ID_ABOUT, "&About", "About the program")
-        menuImport = filemenu.Append(wx.ID_OPEN, "&Import", "Import data")
-        menuExit = filemenu.Append(wx.ID_EXIT, "E&xit", "Terminate the program")
-        menuCloseGrid = gridmenu.Append(wx.ID_CLOSE, "Close", "Close")
+        menuImport = gridmenu.Append(wx.ID_OPEN, "&Import", "Import data to grid")
         menuSumGrid = gridmenu.Append(wx.ID_PREVIEW, "Summarize", "Summarize data")
         menuEditHeaderGrid = gridmenu.Append(wx.ID_EDIT, "Edit headers", "Edit headers")
+        menuCloseGrid = gridmenu.Append(wx.ID_CLOSE, "Close", "Close the opened grid")
 
         menuBar = wx.MenuBar()
         menuBar.Append(filemenu, "&File")
@@ -90,8 +90,16 @@ class MainFrame(wx.Frame):
         childFrame.Show()
 
     def OnEditHeaderGrid(self, e):
+        fileMenu = wx.Menu()
+        menuImport = fileMenu.Append(wx.NewId(), "&Import", "Import scheme")
+        menuSave = fileMenu.Append(wx.NewId(), "&Save", "Save scheme")
+        menuSaveAs = fileMenu.Append(wx.NewId(), "S&ave As..", "Save scheme as..")
+        menuExit = fileMenu.Append(wx.NewId(), "&Close", "Close")
+        menuBar = wx.MenuBar()
+        menuBar.Append(fileMenu, "&File")
         dlg = wx.Frame(self, title='Edit Headers')
-        hdrList = wx.ListCtrl(dlg, -1, style=wx.LC_REPORT)
+        dlg.SetMenuBar(menuBar)
+        hdrList = wx.ListCtrl(dlg, -1, style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES)
         dtypes = self.df.dtypes
         for col, text in enumerate(['no.', 'headers', 'mappers', 'dtype', 'drug', 'show']):
             hdrList.InsertColumn(col, text)
