@@ -91,8 +91,23 @@ class MainFrame(wx.Frame):
 
     def OnEditHeaderGrid(self, e):
 
+        headdf = pd.DataFrame(columns = ['no.', 'header', 'mapper', 'dtype', 'drug', 'show'])
+        headdata = []
+
         def OnClose(event):
             dlg.Hide()
+
+        def OnSaveAs(event, data):
+            saveDlg = wx.FileDialog(self, 'Choose a file', self.dirname, '', '*.*', wx.FD_SAVE)
+            if saveDlg.ShowModal() == wx.ID_OK:
+                filename = saveDlg.GetFilename()
+                dirname = saveDlg.GetDirectory()
+                try:
+                    data.to_csv(os.path.join(dirname, filename), index=False)
+                except:
+                    alertdialog = wx.MessageDialog(self, 'An error occurred. Cannot save a scheme to disk.')
+                    alertdialog.ShowModal()
+            saveDlg.Destroy()
 
         fileMenu = wx.Menu()
         menuImport = fileMenu.Append(wx.NewId(), "&Import", "Import scheme")
@@ -105,15 +120,25 @@ class MainFrame(wx.Frame):
         dlg = wx.Frame(self, title='Edit Headers')
         dlg.SetMenuBar(menuBar)
         dlg.Bind(wx.EVT_MENU, OnClose, menuExit)
+        dlg.Bind(wx.EVT_MENU, lambda e: OnSaveAs(e, headdf), menuSaveAs)
         hdrList = wx.ListCtrl(dlg, -1, style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES)
         dtypes = self.df.dtypes
-        for col, text in enumerate(['no.', 'headers', 'mappers', 'dtype', 'drug', 'show']):
+        for col, text in enumerate(headdf.columns):
             hdrList.InsertColumn(col, text)
 
         for idx, header in enumerate(self.df.columns):
             index = hdrList.InsertStringItem(idx, str(idx+1))
             hdrList.SetStringItem(index, 1, header)
+            hdrList.SetStringItem(index, 2, header)
             hdrList.SetStringItem(index, 3, str(dtypes[header]))
+            headdata.append({
+                'no.': str(idx+1),
+                'header': header,
+                'dtype': str(dtypes[header]),
+                'mapper': header
+            })
+
+        headdf = headdf.append(headdata)
 
         hdrList.SetColumnWidth(1, wx.LIST_AUTOSIZE)
         hdrList.SetColumnWidth(2, wx.LIST_AUTOSIZE)
