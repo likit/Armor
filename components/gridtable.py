@@ -2,34 +2,33 @@ import wx
 import wx.grid
 
 class DataTable(wx.grid.PyGridTableBase):
-    data = (("CF", "Bob", "Dernier"), ("2B", "Ryne", "Sandberg"))
-    colLabels = ("Last", "First")
-
-    def __init__(self):
+    def __init__(self, data):
         wx.grid.PyGridTableBase.__init__(self)
+        if not data.empty:
+            self.data = data
 
     def GetNumberRows(self):
         return len(self.data)
 
     def GetNumberCols(self):
-        return len(self.data[0]) - 1
+        return len(self.data.columns)
 
     def GetColLabelValue(self, col):
-        return self.colLabels[col]
+        return self.data.columns[col]
 
     def GetRowLabelValue(self, row):
-        return self.data[row][0]
+        return self.data.index[row]
 
     def IsEmptyCell(self, row, col):
         return False
 
     def GetValue(self, row, col):
-        return self.data[row][col + 1]
+        return self.data.iloc[row, col]
 
     def SetValue(self, row, col, value):
         pass
 
 class DataGrid(wx.grid.Grid):
-    def __init__(self, parent):
+    def __init__(self, parent, data=None):
         wx.grid.Grid.__init__(self, parent, -1)
-        self.SetTable(DataTable())
+        self.SetTable(DataTable(data))
