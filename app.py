@@ -16,7 +16,7 @@ class MainFrame(wx.Frame):
         menuAbout = helpmenu.Append(wx.ID_ABOUT, "&About", "About the program")
         menuImport = gridmenu.Append(wx.ID_OPEN, "&Import", "Import data to grid")
         menuSumGrid = gridmenu.Append(wx.ID_PREVIEW, "Summarize", "Summarize data")
-        menuEditHeaderGrid = gridmenu.Append(wx.ID_EDIT, "Edit headers", "Edit headers")
+        menuEditHeaderGrid = gridmenu.Append(wx.ID_EDIT, "Edit Data Schema", "Edit headers")
         menuCloseGrid = gridmenu.Append(wx.ID_CLOSE, "Close", "Close the opened grid")
 
         menuBar = wx.MenuBar()
@@ -90,6 +90,7 @@ class MainFrame(wx.Frame):
             if self.dataPanel.IsShown():
                 self.dataPanel.Hide()
                 self.Layout()
+            self.schemafilename = ''
 
     def OnSumGrid(self, e):
         childFrame = wx.Frame(self, title="Description")
@@ -146,9 +147,10 @@ class MainFrame(wx.Frame):
                 self.schemafilename = openDlg.GetFilename()
                 self.schemadirname = openDlg.GetDirectory()
                 try:
-                    dataframe = pd.read_csv(
-                        os.path.join(self.schemadirname, self.schemafilename))
-                    print(dataframe.head())
+                    dataframe.drop(dataframe.index, inplace=True)  # drop previous data
+                    for row in pd.read_csv(
+                        os.path.join(self.schemadirname, self.schemafilename)).iterrows():
+                        dataframe.loc[len(dataframe)] = row[1]
                 except:
                     alertdialog = wx.MessageDialog(self,
                         'An error occurred. Cannot load a schema from the file.')
@@ -161,15 +163,17 @@ class MainFrame(wx.Frame):
                                            'An error occurred. Cannot display a schema.')
                         alertdialog.ShowModal()
                         raise e
+            print(headdf.tail())
 
         def OnSave(event, data):
-            if not self.filename:  # the schema has never been saved before
+            if not self.schemafilename:  # the schema has never been saved before
                 OnSaveAs(event, data)
             else:
                 try:
-                    data.to_csv(os.path.join(self.dirname, self.filename), index=False)
+                    data.to_csv(os.path.join(self.schemadirname, self.schemafilename), index=False)
                 except:
-                    alertdialog = wx.MessageDialog(self, 'An error occurred. Cannot save a scheme to disk.')
+                    alertdialog = wx.MessageDialog(self,
+                                        'An error occurred. Cannot save a schema to disk.')
 
         def OnClose(event):
             dlg.Hide()
@@ -183,19 +187,20 @@ class MainFrame(wx.Frame):
                 try:
                     data.to_csv(os.path.join(self.schemadirname, self.schemafilename), index=False)
                 except:
-                    alertdialog = wx.MessageDialog(self, 'An error occurred. Cannot save a scheme to disk.')
+                    alertdialog = wx.MessageDialog(self, 'An error occurred. Cannot save a schema to disk.')
                     alertdialog.ShowModal()
             saveDlg.Destroy()
 
         fileMenu = wx.Menu()
-        menuImport = fileMenu.Append(wx.NewId(), "&Import", "Import scheme")
-        menuSave = fileMenu.Append(wx.NewId(), "&Save", "Save scheme")
-        menuSaveAs = fileMenu.Append(wx.NewId(), "S&ave As..", "Save scheme as..")
-        menuExit = fileMenu.Append(wx.NewId(), "&Close", "Close")
+        menuImport = fileMenu.Append(wx.NewId(), "&Import Schema", "Import schema")
+        menuSave = fileMenu.Append(wx.NewId(), "&Save Schema", "Save schema")
+        menuSaveAs = fileMenu.Append(wx.NewId(), "S&ave Schema As..", "Save schema as..")
+        menuExit = fileMenu.Append(wx.NewId(), "&Close Window", "Close")
         menuBar = wx.MenuBar()
-        menuBar.Append(fileMenu, "&File")
+        menuBar.Append(fileMenu, "&Menu")
 
-        dlg = wx.Frame(self, title='Edit Headers')
+        dlg = wx.Frame(self, title='Edit Schema')
+        dlg.CreateStatusBar(1)
         dlg.SetMenuBar(menuBar)
         dlg.Bind(wx.EVT_MENU, OnClose, menuExit)
         dlg.Bind(wx.EVT_MENU, lambda e: OnSaveAs(e, headdf), menuSaveAs)
