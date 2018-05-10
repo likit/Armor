@@ -10,30 +10,31 @@ VERSION = "0.1"
 
 class SchemaDialog(wx.Dialog):
     def __init__(self, item, unique_values):
-        wx.Dialog.__init__(self, None, -1, "Schema Setup", size=(200,400))
-        about = wx.StaticText(self, -1, "Please enter information below.")
+        wx.Dialog.__init__(self, None, -1, "Schema Setup")
+        about = wx.StaticText(self, -1, "Please edit information below.")
         header = wx.StaticText(self, -1, "Header: %s" % item['header'])
         mapper = wx.StaticText(self, -1, "Mapper:")
         uvalue = wx.StaticText(self, -1, "Unique values:")
 
         self.mapper_t = wx.TextCtrl(self, -1, item['mapper'])
         self.drug_t = wx.CheckBox(self, -1, "Drug")
-        self.show_t = wx.CheckBox(self, -1, "Show")
+        self.exclude_t = wx.CheckBox(self, -1, "Exclude")
         self.values_t = wx.CheckListBox(self, -1, choices=unique_values)
         ok = wx.Button(self, wx.ID_OK)
         ok.SetDefault()
         cancel = wx.Button(self, wx.ID_CANCEL)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(about, 0, wx.EXPAND)
-        sizer.Add(wx.StaticLine(self), 0, wx.EXPAND)
+        sizer.Add(about)
+        sizer.Add(wx.StaticLine(self))
         fgs = wx.GridBagSizer(vgap=5, hgap=5)
         fgs.Add(header, (1,1), (1,2), wx.EXPAND)
         fgs.Add(mapper, (2,1))
         fgs.Add(self.mapper_t, (2,2))
         fgs.Add(self.drug_t, (3,1))
-        fgs.Add(self.show_t, (3,2))
-        sizer.Add(fgs, 0, wx.EXPAND)
+        fgs.Add(self.exclude_t, (3,2))
+        sizer.Add(fgs)
+        sizer.Add(wx.StaticLine(self))
         sizer.Add(uvalue)
         sizer.Add(self.values_t, 0, wx.EXPAND)
 
@@ -139,7 +140,7 @@ class MainFrame(wx.Frame):
 
     def OnEditHeaderGrid(self, e):
 
-        columns = ['header', 'mapper', 'dtype', 'drug', 'keep', 'filter']
+        columns = ['header', 'mapper', 'dtype', 'drug', 'include', 'filter']
         headdf = {}
 
         def createNewHeaderSchemaList(theList, dataframe, columns):
@@ -158,7 +159,7 @@ class MainFrame(wx.Frame):
                 headerdata["dtype"].append(str(dtypes[header]))
                 headerdata["mapper"].append(header)
                 headerdata["drug"].append(False)
-                headerdata["keep"].append(True)
+                headerdata["include"].append(True)
                 headerdata["filter"].append({header: []})
 
             theList.SetColumnWidth(1, wx.LIST_AUTOSIZE)
@@ -181,13 +182,25 @@ class MainFrame(wx.Frame):
             theList.SetColumnWidth(3, wx.LIST_AUTOSIZE)
 
         def OnItemSelected(event, headdf, data):
-            row = int(event.GetItem().GetText())
-            item = headdf.iloc[row-1]
+            row = event.GetIndex()
+            item = headdf.iloc[row]
             unique_values = [u'{}'.format(value) for value in data[item['header']].unique()]
             dlg = SchemaDialog(item, unique_values)
             if dlg.ShowModal() == wx.ID_OK:
-                pass
+                mapper = dlg.mapper_t.Value
+                drug = dlg.drug_t.Value
+                excluded = dlg.exclude_t.Value
+                headdf.at[row, 'mapper'] = mapper
+                headdf.at[row, 'drug'] = drug
+                headdf.at[row, 'include'] = excluded
             dlg.Destroy()
+            print(headdf.iloc[row])
+            theList = event.GetEventObject()
+            theList.SetStringItem(row, 2, mapper)
+            if drug:
+                theList.SetStringItem(row, 4, str(drug))
+            if excluded:
+                theList.SetStringItem(row, 5, str(False))  # not included
 
 
         def OnLoad(event, theList, dataframe, columns):
